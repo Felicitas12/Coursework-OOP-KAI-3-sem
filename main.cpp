@@ -2,12 +2,17 @@
 #include <iostream>
 #include <memory>
 
+#include "StorageFactory.h"
+
 int main() {
     try {
-        auto studentRepo = std::make_shared<DAL::JsonStorage<BLL::Student>>("students.json");
         auto groupRepo = std::make_shared<DAL::JsonStorage<BLL::Group>>("groups.json");
 
-        auto studentService = std::make_shared<BLL::StudentService>(studentRepo);
+        auto storage = DAL::StorageFactory<BLL::Student>::Create(
+            DAL::StorageType::WAL,
+            "students.json"
+        );
+        auto studentService = std::make_shared<BLL::StudentService>(storage);
         auto groupService = std::make_shared<BLL::GroupService>(groupRepo);
 
         PL::ConsoleInterface interface(studentService, groupService);

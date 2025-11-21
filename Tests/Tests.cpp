@@ -4,7 +4,7 @@
 #include <memory>
 #include <fstream>
 
-class MockRepository : public DAL::IRepository<BLL::Student> {
+class MockStorage : public DAL::IDataStorage<BLL::Student> {
 private:
     std::vector<BLL::Student> data;
 
@@ -22,7 +22,7 @@ public:
     }
 };
 
-class MockGroupRepository : public DAL::IRepository<BLL::Group> {
+class MockGroupStorage : public DAL::IDataStorage<BLL::Group> {
 private:
     std::vector<BLL::Group> data;
 
@@ -42,12 +42,12 @@ public:
 
 class StudentServiceTest : public ::testing::Test {
 protected:
-    std::shared_ptr<MockRepository> repo;
+    std::shared_ptr<MockStorage> storage;
     std::shared_ptr<BLL::StudentService> service;
 
     void SetUp() override {
-        repo = std::make_shared<MockRepository>();
-        service = std::make_shared<BLL::StudentService>(repo);
+        storage = std::make_shared<MockStorage>();
+        service = std::make_shared<BLL::StudentService>(storage);
     }
 };
 
@@ -60,10 +60,17 @@ TEST_F(StudentServiceTest, AddStudent_ValidData_Success) {
     EXPECT_GT(student.GetId(), 0);
 }
 
-TEST_F(StudentServiceTest, AddStudent_EmptyName_ThrowsException) {
+TEST_F(StudentServiceTest, AddStudent_EmptyFirstName_ThrowsException) {
     EXPECT_THROW(
         service->AddStudent("", "Doe", "CS-101"),
-        BLL::BusinessLogicException
+        BLL::ValidationException
+    );
+}
+
+TEST_F(StudentServiceTest, AddStudent_EmptyLastName_ThrowsException) {
+    EXPECT_THROW(
+        service->AddStudent("John", "", "CS-101"),
+        BLL::ValidationException
     );
 }
 
@@ -236,14 +243,24 @@ TEST_F(StudentServiceTest, CalculateGroupAverageGrade_ReturnsCorrect) {
     EXPECT_DOUBLE_EQ(avg, 85.0);
 }
 
+TEST_F(StudentServiceTest, Count_ReturnsCorrectNumber) {
+    EXPECT_EQ(service->Count(), 0);
+
+    service->AddStudent("John", "Doe", "CS-101");
+    EXPECT_EQ(service->Count(), 1);
+
+    service->AddStudent("Jane", "Smith", "CS-102");
+    EXPECT_EQ(service->Count(), 2);
+}
+
 class GroupServiceTest : public ::testing::Test {
 protected:
-    std::shared_ptr<MockGroupRepository> repo;
+    std::shared_ptr<MockGroupStorage> storage;
     std::shared_ptr<BLL::GroupService> service;
 
     void SetUp() override {
-        repo = std::make_shared<MockGroupRepository>();
-        service = std::make_shared<BLL::GroupService>(repo);
+        storage = std::make_shared<MockGroupStorage>();
+        service = std::make_shared<BLL::GroupService>(storage);
     }
 };
 
@@ -258,7 +275,7 @@ TEST_F(GroupServiceTest, AddGroup_ValidData_Success) {
 TEST_F(GroupServiceTest, AddGroup_EmptyName_ThrowsException) {
     EXPECT_THROW(
         service->AddGroup("", "Computer Science", 1),
-        BLL::BusinessLogicException
+        BLL::ValidationException
     );
 }
 
@@ -347,6 +364,33 @@ TEST_F(GradeTest, FromJson_DeserializesCorrectly) {
 
     EXPECT_EQ(grade.GetSubject(), "Physics");
     EXPECT_EQ(grade.GetScore(), 92);
+}
+
+TEST_F(GradeTest, Constructor_InvalidScore_ThrowsException) {
+    EXPECT_THROW(
+        BLL::Grade("Math", 150),
+        std::invalid_argument
+    );
+}
+
+class StudentTest : public ::testing::Test {};
+
+TEST_F(StudentTest, GetFullName_ReturnsCorrectFormat) {
+    BLL::Student student(1, "John", "Doe", "CS-101");
+    EXPECT_EQ(student.GetFullName(), "John Doe");
+}
+
+TEST_F(StudentTest, HasGrade_ExistingSubject_ReturnsTrue) {
+    BLL::Student student(1, "John", "Doe", "CS-101");
+    student.AddGrade(BLL::Grade("Math", 85));
+
+    EXPECT_TRUE(student.HasGrade("Math"));
+}
+
+TEST_F(StudentTest, HasGrade_NonExistingSubject_ReturnsFalse) {
+    BLL::Student student(1, "John", "Doe", "CS-101");
+
+    EXPECT_FALSE(student.HasGrade("Math"));
 }
 
 int main(int argc, char** argv) {

@@ -4,8 +4,8 @@
 
 int main() {
     try {
-        auto studentRepo = std::make_shared<DAL::JsonRepository<BLL::Student>>("students.json");
-        auto groupRepo = std::make_shared<DAL::JsonRepository<BLL::Group>>("groups.json");
+        auto studentRepo = std::make_shared<DAL::JsonStorage<BLL::Student>>("students.json");
+        auto groupRepo = std::make_shared<DAL::JsonStorage<BLL::Group>>("groups.json");
 
         auto studentService = std::make_shared<BLL::StudentService>(studentRepo);
         auto groupService = std::make_shared<BLL::GroupService>(groupRepo);
